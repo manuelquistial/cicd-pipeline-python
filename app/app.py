@@ -201,6 +201,7 @@ def restrict_http_methods():
     allowed_methods = ["GET", "POST"]
     if request.method not in allowed_methods:
         return jsonify(error="Method not allowed"), 405
+    return None
 
 
 @app.after_request
