@@ -12,25 +12,30 @@ from .calculadora import sumar, restar, multiplicar, dividir
 app = Flask(__name__)
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def index():
     """
     Handle the main calculator page.
 
-    This function processes both GET and POST requests to the root route.
-    For GET requests, it displays the calculator form.
-    For POST requests, it processes the form data, performs the requested
-    arithmetic operation, and returns the result.
+    This function processes GET requests to display the calculator form
+    and perform calculations via query parameters.
+
+    Query Parameters:
+        num1 (float): First number for calculation
+        num2 (float): Second number for calculation  
+        operacion (str): Operation to perform (sumar, restar, multiplicar, dividir)
 
     Returns:
         str: Rendered HTML template with the calculator form and result.
     """
     resultado = None
-    if request.method == "POST":
+    
+    # Check if calculation parameters are provided
+    if request.args.get("num1") and request.args.get("num2") and request.args.get("operacion"):
         try:
-            num1 = float(request.form["num1"])
-            num2 = float(request.form["num2"])
-            operacion = request.form["operacion"]
+            num1 = float(request.args.get("num1"))
+            num2 = float(request.args.get("num2"))
+            operacion = request.args.get("operacion")
 
             if operacion == "sumar":
                 resultado = sumar(num1, num2)
@@ -51,4 +56,4 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=3000, host="0.0.0.0")
+    app.run(debug=False, port=3000, host="0.0.0.0")
