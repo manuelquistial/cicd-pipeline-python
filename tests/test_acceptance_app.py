@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 
 import pytest
 from selenium import webdriver
@@ -10,9 +12,33 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000")
 
 
+@pytest.fixture(scope="session")
+def flask_app():
+    """Start Flask app in a separate thread for acceptance tests."""
+    from app.app import app
+
+    # Configure app for testing
+    app.config["TESTING"] = True
+    app.config["WTF_CSRF_ENABLED"] = False
+
+    # Start app in a separate thread
+    def run_app():
+        app.run(debug=False, port=3000, host="0.0.0.0", use_reloader=False)
+
+    thread = threading.Thread(target=run_app, daemon=True)
+    thread.start()
+
+    # Wait for app to start
+    time.sleep(2)
+
+    yield app
+
+    # Cleanup is handled by daemon thread
+
+
 # Configuración del driver (elige uno: Chrome o Firefox)
 @pytest.fixture
-def browser():
+def browser(flask_app):
     # Opción 1: Chrome (headless - sin interfaz gráfica)
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")  # Ejecuta sin interfaz gráfica
