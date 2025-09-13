@@ -106,15 +106,12 @@ class CalculatorForm(FlaskForm):
 @app.route("/health", methods=["GET"])
 def health():
     """Health check endpoint for CI/CD."""
-    return jsonify(
-        {"status": "healthy", "message": "Calculator app is running"}
-    )
+    return jsonify({"status": "healthy", "message": "Calculator app is running"})
 
 
 def _validate_input_numbers(num1, num2):
     """Validate input numbers for security and format."""
-    if (not isinstance(num1, (int, float)) or
-            not isinstance(num2, (int, float))):
+    if not isinstance(num1, (int, float)) or not isinstance(num2, (int, float)):
         raise ValueError("Invalid number format")
 
     if abs(num1) > 1e10 or abs(num2) > 1e10:
@@ -198,9 +195,7 @@ def calculate():
         # Form validation failed
         error = "Error: Datos de entrada inválidos"
 
-    return render_template(
-        "index.html", form=form, resultado=resultado, error=error
-    )
+    return render_template("index.html", form=form, resultado=resultado, error=error)
 
 
 # Security configuration
