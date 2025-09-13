@@ -102,6 +102,56 @@ def health():
     return jsonify({"status": "healthy", "message": "Calculator app is running"})
 
 
+def _validate_input_numbers(num1, num2):
+    """Validate input numbers for security and format."""
+    if not isinstance(num1, (int, float)) or not isinstance(num2, (int, float)):
+        raise ValueError("Invalid number format")
+    
+    if abs(num1) > 1e10 or abs(num2) > 1e10:
+        raise ValueError("Numbers too large")
+
+
+def _perform_calculation(num1, num2, operacion):
+    """Perform the requested calculation operation."""
+    if operacion == "sumar":
+        return sumar(num1, num2)
+    elif operacion == "restar":
+        return restar(num1, num2)
+    elif operacion == "multiplicar":
+        return multiplicar(num1, num2)
+    elif operacion == "dividir":
+        return dividir(num1, num2)
+    else:
+        return "Operación no válida"
+
+
+def _handle_calculation_error(exception):
+    """Handle calculation errors and return appropriate error message."""
+    if isinstance(exception, ValueError):
+        return "Error: Introduce números válidos"
+    elif isinstance(exception, ZeroDivisionError):
+        return "Error: No se puede dividir por cero"
+    else:
+        app.logger.error("Unexpected error in calculator: %s", exception)
+        return "Error interno del servidor"
+
+
+def _process_form_submission(form):
+    """Process form submission and return result or error."""
+    try:
+        num1 = form.num1.data
+        num2 = form.num2.data
+        operacion = form.operacion.data
+
+        _validate_input_numbers(num1, num2)
+        resultado = _perform_calculation(num1, num2, operacion)
+        return resultado, None
+
+    except Exception as e:
+        error = _handle_calculation_error(e)
+        return None, error
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     """Handle the main calculator page.
@@ -118,37 +168,7 @@ def index():
     error = None
 
     if request.method == "POST" and form.validate():
-        try:
-            num1 = form.num1.data
-            num2 = form.num2.data
-            operacion = form.operacion.data
-
-            # Additional security checks
-            if not isinstance(num1, (int, float)) or not isinstance(num2, (int, float)):
-                raise ValueError("Invalid number format")
-
-            # Check for extremely large numbers that could cause issues
-            if abs(num1) > 1e10 or abs(num2) > 1e10:
-                raise ValueError("Numbers too large")
-
-            if operacion == "sumar":
-                resultado = sumar(num1, num2)
-            elif operacion == "restar":
-                resultado = restar(num1, num2)
-            elif operacion == "multiplicar":
-                resultado = multiplicar(num1, num2)
-            elif operacion == "dividir":
-                resultado = dividir(num1, num2)
-            else:
-                resultado = "Operación no válida"
-
-        except ValueError:
-            error = "Error: Introduce números válidos"
-        except ZeroDivisionError:
-            error = "Error: No se puede dividir por cero"
-        except Exception as e:
-            error = "Error interno del servidor"
-            app.logger.error("Unexpected error in calculator: %s", e)
+        resultado, error = _process_form_submission(form)
     elif request.method == "POST":
         # Form validation failed
         error = "Error: Datos de entrada inválidos"
