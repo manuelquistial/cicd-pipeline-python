@@ -43,18 +43,12 @@ app = Flask(__name__)
 
 
 def get_secret_key():
-    """Get secret key from environment variable or generate a secure one."""
+    """Get secret key from environment variable."""
     secret_key = os.getenv("SECRET_KEY")
     if not secret_key:
-        if os.getenv("FLASK_ENV") == "production":
-            raise ValueError(
-                "SECRET_KEY environment variable must be set in production"
-            )
-        # Generate a temporary secret key for development
-        secret_key = secrets.token_hex(32)
-        print(
-            "WARNING: Using temporary secret key for development. "
-            "Set SECRET_KEY environment variable for production."
+        raise ValueError(
+            "SECRET_KEY environment variable must be set. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
         )
     return secret_key
 
