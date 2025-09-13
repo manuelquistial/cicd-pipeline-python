@@ -79,11 +79,17 @@ class CalculatorForm(FlaskForm):
 
     num1 = FloatField(
         "Número 1",
-        [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
+        [
+            validators.InputRequired(),
+            validators.NumberRange(min=-1e10, max=1e10),
+        ],
     )
     num2 = FloatField(
         "Número 2",
-        [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
+        [
+            validators.InputRequired(),
+            validators.NumberRange(min=-1e10, max=1e10),
+        ],
     )
     operacion = SelectField(
         "Operación",
@@ -100,12 +106,15 @@ class CalculatorForm(FlaskForm):
 @app.route("/health", methods=["GET"])
 def health():
     """Health check endpoint for CI/CD."""
-    return jsonify({"status": "healthy", "message": "Calculator app is running"})
+    return jsonify(
+        {"status": "healthy", "message": "Calculator app is running"}
+    )
 
 
 def _validate_input_numbers(num1, num2):
     """Validate input numbers for security and format."""
-    if not isinstance(num1, (int, float)) or not isinstance(num2, (int, float)):
+    if (not isinstance(num1, (int, float)) or
+            not isinstance(num2, (int, float))):
         raise ValueError("Invalid number format")
 
     if abs(num1) > 1e10 or abs(num2) > 1e10:
@@ -185,7 +194,9 @@ def calculate():
         # Form validation failed
         error = "Error: Datos de entrada inválidos"
 
-    return render_template("index.html", form=form, resultado=resultado, error=error)
+    return render_template(
+        "index.html", form=form, resultado=resultado, error=error
+    )
 
 
 # Security configuration
@@ -241,7 +252,9 @@ def set_security_headers(response):
 @app.errorhandler(405)
 def method_not_allowed_handler(_e):
     """Handle method not allowed errors"""
-    return jsonify(error="Method not allowed. Only GET and POST are supported."), 405
+    return jsonify(
+        error="Method not allowed. Only GET and POST are supported."
+    ), 405
 
 
 @app.errorhandler(429)
