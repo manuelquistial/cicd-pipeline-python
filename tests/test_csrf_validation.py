@@ -9,11 +9,31 @@ import pytest
 from app.app import app, validate_csrf_protection, validate_request_origin
 
 
+@pytest.fixture(autouse=True)
+def setup_test_environment():
+    """Setup test environment before each test."""
+    # Ensure testing environment is set
+    os.environ["TESTING"] = "true"
+
+    # Reset rate limiter
+    from app.app import limiter
+
+    limiter.enabled = False
+
+    # CSRF_ENABLED is already set to False in app.py when TESTING=true
+
+
 @pytest.fixture
 def client():
     """Create a test client for the Flask application."""
     # Set testing environment to disable rate limiting
     os.environ["TESTING"] = "true"
+
+    # Reset rate limiter for each test
+    from app.app import limiter
+
+    limiter.enabled = False
+
     with app.test_client() as client:
         yield client
 
