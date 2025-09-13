@@ -122,8 +122,8 @@ def find_elements(browser):
 def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     import time
 
-    # Add delay between tests to avoid rate limiting
-    time.sleep(3)
+    # Add longer delay between tests to avoid rate limiting
+    time.sleep(5)
 
     browser.get(BASE_URL)
 

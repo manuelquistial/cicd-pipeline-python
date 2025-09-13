@@ -67,9 +67,17 @@ app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour
 csrf = CSRFProtect(app)
 
 # Initialize rate limiter
-limiter = Limiter(
-    app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
-)
+# More lenient limits for testing environment
+if os.getenv("FLASK_ENV") == "testing" or os.getenv("PYTEST_CURRENT_TEST"):
+    # Very lenient limits for testing
+    limiter = Limiter(
+        app=app, key_func=get_remote_address, default_limits=["10000 per day", "1000 per hour"]
+    )
+else:
+    # Production limits
+    limiter = Limiter(
+        app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
+    )
 
 
 # Input validation form
