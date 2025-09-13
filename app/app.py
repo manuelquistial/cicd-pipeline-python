@@ -1,7 +1,11 @@
 # app/app.py
 import os
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
+
+# Load environment variables from .env file
+load_dotenv()
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
@@ -13,9 +17,21 @@ from .calculadora import dividir, multiplicar, restar, sumar
 app = Flask(__name__)
 
 # Security Configuration
-app.config["SECRET_KEY"] = os.getenv(
-    "SECRET_KEY", "dev-secret-key-change-in-production"
-)
+def get_secret_key():
+    """Get secret key from environment variable or generate a secure one."""
+    secret_key = os.getenv("SECRET_KEY")
+    if not secret_key:
+        if os.getenv("FLASK_ENV") == "production":
+            raise ValueError(
+                "SECRET_KEY environment variable must be set in production"
+            )
+        # Generate a temporary secret key for development
+        import secrets
+        secret_key = secrets.token_hex(32)
+        print("WARNING: Using temporary secret key for development. Set SECRET_KEY environment variable for production.")
+    return secret_key
+
+app.config["SECRET_KEY"] = get_secret_key()
 app.config["WTF_CSRF_ENABLED"] = True
 app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour
 
