@@ -112,6 +112,12 @@ class CalculatorForm(FlaskForm):
     )
 
 
+@app.route("/health")
+def health():
+    """Health check endpoint for CI/CD."""
+    return jsonify({"status": "healthy", "message": "Calculator app is running"})
+
+
 @app.route("/", methods=["GET", "POST"])
 @limiter.limit("10 per minute")  # Additional rate limiting for this endpoint
 def index():

@@ -52,8 +52,17 @@ jobs:
            FLASK_ENV: testing
         run: |
           gunicorn --workers=2 --bind=0.0.0.0:8000 app.app:app &
-          sleep 15  # Increased sleep for CI
-          pytest tests/test_acceptance_app.py --cov-report=xml:acceptance_coverage.xml --html=acceptance_report.html -v
+          sleep 20  # Increased sleep for CI
+          # Wait for app to be ready using health check
+          for i in {1..10}; do
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "App is ready after $((i*2)) seconds"
+              break
+            fi
+            echo "Waiting for app to be ready... ($i/10)"
+            sleep 2
+          done
+          pytest tests/test_acceptance_app.py --cov-report=xml:acceptance_coverage.xml --html=acceptance_report.html -v -s
 
       - name: Upload Test Reports Artifacts
         uses: actions/upload-artifact@v4
