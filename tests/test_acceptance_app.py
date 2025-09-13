@@ -53,47 +53,78 @@ def browser():
 def get_resultado(browser):
     import time
     
-    # First, wait a bit for the page to process (increased for CI)
-    time.sleep(2)
-    
-    # Try to find elements immediately first
-    result_elements = browser.find_elements(By.CLASS_NAME, "result")
-    if result_elements:
-        return result_elements[0].text
+    # Try multiple times with increasing delays for CI environment
+    for attempt in range(3):
+        print(f"DEBUG: Attempt {attempt + 1}/3 to get result")
+        
+        # Wait with increasing delay
+        wait_time = 2 + (attempt * 2)  # 2s, 4s, 6s
+        print(f"DEBUG: Waiting {wait_time} seconds...")
+        time.sleep(wait_time)
+        
+        # Debug: Print current state
+        print(f"DEBUG: Current URL: {browser.current_url}")
+        print(f"DEBUG: Page title: {browser.title}")
+        print(f"DEBUG: Looking for elements...")
+        
+        # Try to find elements immediately first
+        result_elements = browser.find_elements(By.CLASS_NAME, "result")
+        print(f"DEBUG: Found {len(result_elements)} result elements")
+        if result_elements:
+            print(f"DEBUG: Result text: '{result_elements[0].text}'")
+            return result_elements[0].text
 
-    # Check for general error first (higher priority)
-    error_elements = browser.find_elements(By.CLASS_NAME, "error")
-    if error_elements:
-        return error_elements[0].text
+        # Check for general error first (higher priority)
+        error_elements = browser.find_elements(By.CLASS_NAME, "error")
+        print(f"DEBUG: Found {len(error_elements)} error elements")
+        if error_elements:
+            print(f"DEBUG: Error text: '{error_elements[0].text}'")
+            return error_elements[0].text
 
-    # Check for field validation errors
-    field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
-    if field_errors:
-        return field_errors[0].text
+        # Check for field validation errors
+        field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
+        print(f"DEBUG: Found {len(field_errors)} field error elements")
+        if field_errors:
+            print(f"DEBUG: Field error text: '{field_errors[0].text}'")
+            return field_errors[0].text
+        
+        print(f"DEBUG: No elements found in attempt {attempt + 1}")
+        if attempt < 2:  # Not the last attempt
+            print("DEBUG: Retrying...")
+            continue
     
     # If no elements found immediately, wait for them
+    print("DEBUG: Waiting for elements with WebDriverWait...")
     try:
         WebDriverWait(browser, 20).until(  # Increased timeout for CI
             lambda driver: driver.find_elements(By.CLASS_NAME, "result")
             or driver.find_elements(By.CLASS_NAME, "error")
             or driver.find_elements(By.CLASS_NAME, "field-error")
         )
+        print("DEBUG: WebDriverWait completed successfully")
 
         # Check for result first
         result_elements = browser.find_elements(By.CLASS_NAME, "result")
+        print(f"DEBUG: After wait - Found {len(result_elements)} result elements")
         if result_elements:
+            print(f"DEBUG: After wait - Result text: '{result_elements[0].text}'")
             return result_elements[0].text
 
         # Check for error messages
         error_elements = browser.find_elements(By.CLASS_NAME, "error")
+        print(f"DEBUG: After wait - Found {len(error_elements)} error elements")
         if error_elements:
+            print(f"DEBUG: After wait - Error text: '{error_elements[0].text}'")
             return error_elements[0].text
 
         # Check for field validation errors
         field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
+        print(f"DEBUG: After wait - Found {len(field_errors)} field error elements")
         if field_errors:
+            print(f"DEBUG: After wait - Field error text: '{field_errors[0].text}'")
             return field_errors[0].text
 
+        print("DEBUG: No elements found after WebDriverWait")
         return "No se encontró resultado ni error"
     except TimeoutException:
         # Debug information for CI
@@ -173,15 +204,22 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     num1_input, num2_input, operacion_select, calcular_button = find_elements(browser)
 
     # Realiza la operacion:
+    print(f"DEBUG: Filling form with num1='{num1}', num2='{num2}', operacion='{operacion}'")
     num1_input.clear()
     num1_input.send_keys(num1)
     num2_input.clear()
     num2_input.send_keys(num2)
     operacion_select.select_by_value(operacion)
+    
+    print("DEBUG: Clicking calculate button...")
     calcular_button.click()
 
     # Wait for page to reload after form submission (increased for CI)
+    print("DEBUG: Waiting for page to reload...")
     time.sleep(3)
 
     # Verifica con la funcion auxiliar:
-    assert resultado_esperado in get_resultado(browser)
+    print(f"DEBUG: Expected result: '{resultado_esperado}'")
+    actual_result = get_resultado(browser)
+    print(f"DEBUG: Actual result: '{actual_result}'")
+    assert resultado_esperado in actual_result
