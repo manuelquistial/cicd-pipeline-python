@@ -6,6 +6,7 @@ coverage
 selenium
 webdriver-manager
 flask
+flask-limiter
 pytest-cov
 pytest-html
 gunicorn
