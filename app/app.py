@@ -1,11 +1,30 @@
-# app/app.py
+"""
+Flask web application for a secure calculator.
+
+This module provides a web interface for performing basic arithmetic operations
+(addition, subtraction, multiplication, division) with comprehensive security
+features including CSRF protection, rate limiting, input validation, and
+security headers.
+
+Security Features:
+    - CSRF protection using Flask-WTF
+    - Rate limiting with Flask-Limiter
+    - Input validation with WTForms
+    - Security headers (X-Frame-Options, X-XSS-Protection, etc.)
+    - Secure secret key management
+    - Error handling without information disclosure
+
+Environment Variables:
+    SECRET_KEY: Flask secret key (required in production)
+    FLASK_ENV: Environment mode (development/production)
+    FLASK_DEBUG: Debug mode (true/false)
+    CSRF_PROTECTION: Enable CSRF protection (true/false)
+"""
 import os
+import secrets
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
-
-# Load environment variables from .env file
-load_dotenv()
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf import FlaskForm
@@ -13,6 +32,9 @@ from flask_wtf.csrf import CSRFProtect
 from wtforms import FloatField, SelectField, validators
 
 from .calculadora import dividir, multiplicar, restar, sumar
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -26,9 +48,11 @@ def get_secret_key():
                 "SECRET_KEY environment variable must be set in production"
             )
         # Generate a temporary secret key for development
-        import secrets
         secret_key = secrets.token_hex(32)
-        print("WARNING: Using temporary secret key for development. Set SECRET_KEY environment variable for production.")
+        print(
+            "WARNING: Using temporary secret key for development. "
+            "Set SECRET_KEY environment variable for production."
+        )
     return secret_key
 
 app.config["SECRET_KEY"] = get_secret_key()
@@ -46,6 +70,11 @@ limiter = Limiter(
 
 # Input validation form
 class CalculatorForm(FlaskForm):
+    """Form for calculator input validation.
+    
+    This form handles input validation for the calculator application,
+    including number validation and operation selection.
+    """
     num1 = FloatField(
         "Número 1",
         [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
@@ -69,6 +98,15 @@ class CalculatorForm(FlaskForm):
 @app.route("/", methods=["GET", "POST"])
 @limiter.limit("10 per minute")  # Additional rate limiting for this endpoint
 def index():
+    """Handle the main calculator page.
+    
+    This function processes both GET and POST requests:
+    - GET: Displays the calculator form
+    - POST: Processes the form submission and performs calculations
+    
+    Returns:
+        str: Rendered HTML template with the calculator form and result
+    """
     form = CalculatorForm()
     resultado = None
     error = None
@@ -104,7 +142,7 @@ def index():
             error = "Error: No se puede dividir por cero"
         except Exception as e:
             error = "Error interno del servidor"
-            app.logger.error(f"Unexpected error in calculator: {e}")
+            app.logger.error("Unexpected error in calculator: %s", e)
     elif request.method == "POST":
         # Form validation failed
         error = "Error: Datos de entrada inválidos"
@@ -131,13 +169,13 @@ def set_security_headers(response):
 
 # Error handlers
 @app.errorhandler(429)
-def ratelimit_handler(e):
+def ratelimit_handler(_e):
     """Handle rate limit exceeded"""
     return jsonify(error="Rate limit exceeded. Please try again later."), 429
 
 
 @app.errorhandler(400)
-def bad_request_handler(e):
+def bad_request_handler(_e):
     """Handle bad requests"""
     return jsonify(error="Bad request"), 400
 
@@ -145,7 +183,7 @@ def bad_request_handler(e):
 @app.errorhandler(500)
 def internal_error_handler(e):
     """Handle internal server errors"""
-    app.logger.error(f"Internal server error: {e}")
+    app.logger.error("Internal server error: %s", e)
     return jsonify(error="Internal server error"), 500
 
 
