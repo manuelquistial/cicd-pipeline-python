@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 from flask import Flask, abort, render_template, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect, validate_csrf
+from wtforms import ValidationError
 
 from .calculadora import dividir, multiplicar, restar, sumar
 
@@ -21,6 +23,22 @@ app = Flask(__name__)
 
 ENVIRONMENT = os.getenv("FLASK_ENV", "development")
 IS_PRODUCTION = ENVIRONMENT == "production"
+
+# Configure secret key for CSRF protection
+app.config["SECRET_KEY"] = os.getenv(
+    "SECRET_KEY", "dev-secret-key-change-in-production"
+)
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
+# CSRF protection configuration
+CSRF_ENABLED = os.getenv("CSRF_PROTECTION", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+    "on",
+)
 
 # Initialize rate limiter
 limiter = Limiter(
@@ -33,9 +51,38 @@ limiter = Limiter(
     ),
 )
 
-# Disable rate limiting for testing
+# Disable rate limiting and CSRF protection for testing
 if os.getenv("TESTING") == "true":
     limiter.enabled = False
+    # Disable CSRF protection globally for testing
+    CSRF_ENABLED = False
+
+
+def validate_csrf_protection():
+    """
+    Validate CSRF protection for the request.
+    This provides protection against CSRF attacks using Flask-WTF.
+    Can be disabled via CSRF_PROTECTION environment variable.
+    """
+    # Skip CSRF validation if disabled
+    if not CSRF_ENABLED:
+        return True
+
+    # Skip CSRF validation in testing environment
+    if os.getenv("TESTING") == "true":
+        return True
+
+    try:
+        # Validate CSRF token using Flask-WTF
+        validate_csrf(request.form.get("csrf_token"))
+        return True
+    except ValidationError:
+        # CSRF validation failed
+        abort(403, description="CSRF token validation failed")
+    except Exception:
+        # For GET requests or when no CSRF token is present,
+        # fall back to origin validation
+        return validate_request_origin()
 
 
 def validate_request_origin():
@@ -45,7 +92,7 @@ def validate_request_origin():
     Only enabled in production environment.
     """
     if not IS_PRODUCTION:
-        return  # Skip validation in development
+        return True  # Skip validation in development
 
     # Get the referer header
     referer = request.headers.get("Referer")
@@ -57,6 +104,8 @@ def validate_request_origin():
         # Allow requests from same origin
         if referer_origin != request_origin:
             abort(403, description="Invalid request origin")
+
+    return True
 
 
 @app.route("/", methods=["GET"])
@@ -77,8 +126,8 @@ def index():
     Returns:
         str: Rendered HTML template with the calculator form and result.
     """
-    # Validate request origin for CSRF protection
-    validate_request_origin()
+    # Validate CSRF protection
+    validate_csrf_protection()
 
     resultado = None
 

@@ -2,10 +2,12 @@
 <html lang="es">
 <head>
     <title>Calculadora</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     <h1>Calculadora</h1>
     <form method="get">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" name="num1" placeholder="Número 1" required>
         <input type="text" name="num2" placeholder="Número 2" required>
         <select name="operacion">

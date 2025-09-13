@@ -1,4 +1,6 @@
 # tests/test_app.py
+import os
+
 import pytest
 
 from app.app import app
@@ -6,6 +8,8 @@ from app.app import app
 
 @pytest.fixture
 def client():
+    # Set testing environment variables to disable CSRF and rate limiting
+    os.environ["TESTING"] = "true"
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
