@@ -39,13 +39,21 @@ jobs:
         run: |
           pytest --ignore=tests/test_acceptance_app.py  # Genera un informe XML para SonarCloud
 
+      - name: Install Chrome for Selenium
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Run Acceptance Tests
         env:
            APP_BASE_URL: http://localhost:8000
+           FLASK_ENV: testing
         run: |
           gunicorn --workers=2 --bind=0.0.0.0:8000 app.app:app &
-          sleep 10
-          pytest tests/test_acceptance_app.py --cov-report=xml:acceptance_coverage.xml --html=acceptance_report.html # Genera un informe XML con otro nombre, para no sobre-escribir el anterior de  las pruebas unitarias
+          sleep 15  # Increased sleep for CI
+          pytest tests/test_acceptance_app.py --cov-report=xml:acceptance_coverage.xml --html=acceptance_report.html -v
 
       - name: Upload Test Reports Artifacts
         uses: actions/upload-artifact@v4

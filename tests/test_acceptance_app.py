@@ -18,7 +18,22 @@ def browser():
     options.add_argument("--headless")  # Ejecuta sin interfaz gráfica
     options.add_argument("--no-sandbox")  # Necesario para algunos entornos
     options.add_argument("--disable-dev-shm-usage")  # Necesario para algunos entornos
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-logging")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--allow-running-insecure-content")
+    options.add_argument("--window-size=1920,1080")
+    # Additional options for CI environment
+    options.add_argument("--remote-debugging-port=9222")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    
     driver = webdriver.Chrome(options=options)
+    # Set longer timeouts for CI environment
+    driver.implicitly_wait(10)
+    driver.set_page_load_timeout(30)
 
     # Opción 2: Firefox (headless)
     # options = webdriver.FirefoxOptions()
@@ -38,8 +53,8 @@ def browser():
 def get_resultado(browser):
     import time
     
-    # First, wait a bit for the page to process
-    time.sleep(1)
+    # First, wait a bit for the page to process (increased for CI)
+    time.sleep(2)
     
     # Try to find elements immediately first
     result_elements = browser.find_elements(By.CLASS_NAME, "result")
@@ -58,7 +73,7 @@ def get_resultado(browser):
     
     # If no elements found immediately, wait for them
     try:
-        WebDriverWait(browser, 10).until(
+        WebDriverWait(browser, 20).until(  # Increased timeout for CI
             lambda driver: driver.find_elements(By.CLASS_NAME, "result")
             or driver.find_elements(By.CLASS_NAME, "error")
             or driver.find_elements(By.CLASS_NAME, "field-error")
@@ -81,6 +96,11 @@ def get_resultado(browser):
 
         return "No se encontró resultado ni error"
     except TimeoutException:
+        # Debug information for CI
+        print(f"Timeout waiting for elements. Current URL: {browser.current_url}")
+        print(f"Page title: {browser.title}")
+        print(f"Page source preview: {browser.page_source[:500]}...")
+        
         # Final check if elements are present
         result_elements = browser.find_elements(By.CLASS_NAME, "result")
         if result_elements:
@@ -122,17 +142,22 @@ def find_elements(browser):
 def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     import time
 
-    # Add longer delay between tests to avoid rate limiting
-    time.sleep(5)
+    # Add longer delay between tests to avoid rate limiting (increased for CI)
+    time.sleep(8)
 
     browser.get(BASE_URL)
 
-    # Wait for page to load with longer timeout
+    # Wait for page to load with longer timeout (increased for CI)
     try:
-        WebDriverWait(browser, 30).until(
+        WebDriverWait(browser, 45).until(  # Increased timeout for CI
             EC.presence_of_element_located((By.TAG_NAME, "form"))
         )
     except TimeoutException:
+        # Debug information for CI
+        print(f"Form loading timeout. Current URL: {browser.current_url}")
+        print(f"Page title: {browser.title}")
+        print(f"Page source preview: {browser.page_source[:500]}...")
+        
         # If form not found, check if page loaded at all
         if "Calculadora Segura" not in browser.page_source:
             raise Exception("Page did not load properly")
@@ -141,8 +166,8 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
         if not form_elements:
             raise Exception("Form not found on page")
 
-    # Additional delay to ensure page is fully loaded
-    time.sleep(3)
+    # Additional delay to ensure page is fully loaded (increased for CI)
+    time.sleep(5)
 
     # Encuentra los elementos de la página.  Esta vez con la funcion auxiliar.
     num1_input, num2_input, operacion_select, calcular_button = find_elements(browser)
@@ -155,8 +180,8 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     operacion_select.select_by_value(operacion)
     calcular_button.click()
 
-    # Wait for page to reload after form submission
-    time.sleep(2)
+    # Wait for page to reload after form submission (increased for CI)
+    time.sleep(3)
 
     # Verifica con la funcion auxiliar:
     assert resultado_esperado in get_resultado(browser)
