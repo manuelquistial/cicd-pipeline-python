@@ -126,14 +126,14 @@ def _perform_calculation(num1, num2, operacion):
     """Perform the requested calculation operation."""
     if operacion == "sumar":
         return sumar(num1, num2)
-    elif operacion == "restar":
+    if operacion == "restar":
         return restar(num1, num2)
-    elif operacion == "multiplicar":
+    if operacion == "multiplicar":
         return multiplicar(num1, num2)
-    elif operacion == "dividir":
+    if operacion == "dividir":
         return dividir(num1, num2)
-    else:
-        return "Operación no válida"
+
+    return "Operación no válida"
 
 
 def _handle_calculation_error(exception):
