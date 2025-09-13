@@ -160,13 +160,9 @@ def _process_form_submission(form):
     except (ValueError, ZeroDivisionError) as e:
         error = _handle_calculation_error(e)
         return None, error
-    except (TypeError, AttributeError, OverflowError) as e:
+    except (TypeError, AttributeError, OverflowError, MemoryError, RuntimeError) as e:
         # Handle specific calculation errors
         app.logger.error("Calculation error in form submission: %s", e)
-        return None, INTERNAL_ERROR_MESSAGE
-    except Exception as e:
-        # Log truly unexpected errors but don't expose internal details
-        app.logger.error("Unexpected error in form submission: %s", e)
         return None, INTERNAL_ERROR_MESSAGE
 
 
