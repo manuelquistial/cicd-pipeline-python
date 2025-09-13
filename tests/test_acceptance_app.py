@@ -61,6 +61,19 @@ def get_resultado(browser):
 
         return "No se encontró resultado ni error"
     except TimeoutException:
+        # If timeout, check if elements are already present
+        result_elements = browser.find_elements(By.CLASS_NAME, "result")
+        if result_elements:
+            return result_elements[0].text
+
+        error_elements = browser.find_elements(By.CLASS_NAME, "error")
+        if error_elements:
+            return error_elements[0].text
+
+        field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
+        if field_errors:
+            return field_errors[0].text
+
         return "Error: Tiempo de espera agotado esperando el resultado."
 
 
@@ -90,17 +103,17 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     import time
 
     # Add delay between tests to avoid rate limiting
-    time.sleep(2)
+    time.sleep(3)
 
     browser.get(BASE_URL)
 
     # Wait for page to load with longer timeout
-    WebDriverWait(browser, 20).until(
+    WebDriverWait(browser, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, "form"))
     )
 
     # Additional delay to ensure page is fully loaded
-    time.sleep(2)
+    time.sleep(3)
 
     # Encuentra los elementos de la página.  Esta vez con la funcion auxiliar.
     num1_input, num2_input, operacion_select, calcular_button = find_elements(browser)
@@ -112,6 +125,9 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     num2_input.send_keys(num2)
     operacion_select.select_by_value(operacion)
     calcular_button.click()
+
+    # Wait for page to reload after form submission
+    time.sleep(2)
 
     # Verifica con la funcion auxiliar:
     assert resultado_esperado in get_resultado(browser)
