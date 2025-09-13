@@ -1,6 +1,4 @@
 import os
-import threading
-import time
 
 import pytest
 from selenium import webdriver
@@ -9,31 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
 
-# Set testing environment before importing app
-os.environ["TESTING"] = "true"
-from app.app import app  # noqa: E402
-
 BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000")
-
-
-# Fixture para iniciar el servidor Flask
-@pytest.fixture(scope="session")
-def server():
-    """Start the Flask server in a separate thread for acceptance tests."""
-
-    def run_server():
-        app.run(host="0.0.0.0", port=3000, debug=False, use_reloader=False)
-
-    # Start server in a separate thread
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-
-    # Wait for server to start
-    time.sleep(2)
-
-    yield
-
-    # Server will be cleaned up automatically when the thread dies
 
 
 # Configuración del driver (elige uno: Chrome o Firefox)
@@ -92,16 +66,20 @@ def find_elements(browser):
         ("abc", "def", "sumar", "Error: Introduce números válidos"),
     ],
 )
-def test_calculadora(server, browser, num1, num2, operacion, resultado_esperado):
+def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
+    """
+    Test the calculator application through the web interface.
+
+    This test assumes the Flask application is already running on the BASE_URL.
+    To run these tests, start the server first:
+        python app/app.py
+    """
     browser.get(BASE_URL)
 
     # Wait for page to load
     WebDriverWait(browser, 10).until(
         EC.presence_of_element_located((By.TAG_NAME, "form"))
     )
-
-    # Add small delay between tests to avoid rate limiting
-    time.sleep(0.5)
 
     # Encuentra los elementos de la página.  Esta vez con la funcion auxiliar.
     num1_input, num2_input, operacion_select, calcular_button = find_elements(browser)

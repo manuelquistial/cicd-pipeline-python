@@ -71,7 +71,8 @@ def index():
     Query Parameters:
         num1 (float): First number for calculation
         num2 (float): Second number for calculation
-        operacion (str): Operation to perform (sumar, restar, multiplicar, dividir)
+        operacion (str): Operation to perform (sumar, restar, multiplicar,
+            dividir)
 
     Returns:
         str: Rendered HTML template with the calculator form and result.
