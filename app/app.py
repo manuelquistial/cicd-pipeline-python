@@ -71,12 +71,16 @@ csrf = CSRFProtect(app)
 if os.getenv("FLASK_ENV") == "testing" or os.getenv("PYTEST_CURRENT_TEST"):
     # Very lenient limits for testing
     limiter = Limiter(
-        app=app, key_func=get_remote_address, default_limits=["10000 per day", "1000 per hour"]
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["10000 per day", "1000 per hour"],
     )
 else:
     # Production limits
     limiter = Limiter(
-        app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"],
     )
 
 
