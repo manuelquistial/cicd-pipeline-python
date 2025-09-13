@@ -96,7 +96,7 @@ class CalculatorForm(FlaskForm):
     )
 
 
-@app.route("/health")
+@app.route("/health", methods=["GET"])
 def health():
     """Health check endpoint for CI/CD."""
     return jsonify({"status": "healthy", "message": "Calculator app is running"})
@@ -156,24 +156,62 @@ def index():
     return render_template("index.html", form=form, resultado=resultado, error=error)
 
 
-# Security headers
+# Security configuration
+@app.before_request
+def restrict_http_methods():
+    """Restrict HTTP methods to only allow safe methods"""
+    allowed_methods = ["GET", "POST"]
+    if request.method not in allowed_methods:
+        return jsonify(error="Method not allowed"), 405
+
+
 @app.after_request
 def set_security_headers(response):
-    """Add security headers to all responses"""
+    """Add comprehensive security headers to all responses"""
+    # Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
+    
+    # Prevent clickjacking attacks
     response.headers["X-Frame-Options"] = "DENY"
+    
+    # Enable XSS protection
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains"
-    )
+    
+    # Force HTTPS in production
+    if os.getenv("FLASK_ENV") == "production":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
+    
+    # Content Security Policy
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self'; " "style-src 'self' 'unsafe-inline';"
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
     )
+    
+    # Referrer policy
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    
+    # Remove server information
+    response.headers.pop("Server", None)
+    
     return response
 
 
 # Error handlers
+@app.errorhandler(405)
+def method_not_allowed_handler(_e):
+    """Handle method not allowed errors"""
+    return jsonify(error="Method not allowed. Only GET and POST are supported."), 405
+
+
 @app.errorhandler(429)
 def ratelimit_handler(_e):
     """Handle rate limit exceeded"""
