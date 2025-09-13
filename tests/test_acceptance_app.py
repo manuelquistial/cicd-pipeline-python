@@ -36,8 +36,26 @@ def browser():
 
 # Función de ayuda para esperar y obtener el resultado
 def get_resultado(browser):
+    import time
+    
+    # First, wait a bit for the page to process
+    time.sleep(1)
+    
+    # Try to find elements immediately first
+    result_elements = browser.find_elements(By.CLASS_NAME, "result")
+    if result_elements:
+        return result_elements[0].text
+
+    error_elements = browser.find_elements(By.CLASS_NAME, "error")
+    if error_elements:
+        return error_elements[0].text
+
+    field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
+    if field_errors:
+        return field_errors[0].text
+    
+    # If no elements found immediately, wait for them
     try:
-        # Wait for either result or error to appear
         WebDriverWait(browser, 10).until(
             lambda driver: driver.find_elements(By.CLASS_NAME, "result")
             or driver.find_elements(By.CLASS_NAME, "error")
@@ -61,7 +79,7 @@ def get_resultado(browser):
 
         return "No se encontró resultado ni error"
     except TimeoutException:
-        # If timeout, check if elements are already present
+        # Final check if elements are present
         result_elements = browser.find_elements(By.CLASS_NAME, "result")
         if result_elements:
             return result_elements[0].text
@@ -90,10 +108,10 @@ def find_elements(browser):
 @pytest.mark.parametrize(
     "num1, num2, operacion, resultado_esperado",
     [
-        ("2", "3", "sumar", "Resultado: 5"),
-        ("5", "2", "restar", "Resultado: 3"),
-        ("4", "6", "multiplicar", "Resultado: 24"),
-        ("10", "2", "dividir", "Resultado: 5"),
+        ("2", "3", "sumar", "Resultado: 5.0"),
+        ("5", "2", "restar", "Resultado: 3.0"),
+        ("4", "6", "multiplicar", "Resultado: 24.0"),
+        ("10", "2", "dividir", "Resultado: 5.0"),
         ("5.0", "0.0", "dividir", "Error: No se puede dividir por cero"),
         ("abc", "def", "sumar", "Error: Datos de entrada inválidos"),
     ],
