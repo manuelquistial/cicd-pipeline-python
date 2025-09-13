@@ -24,7 +24,7 @@ IS_PRODUCTION = ENVIRONMENT == "production"
 
 # Initialize rate limiter
 limiter = Limiter(
-    app,
+    app=app,
     key_func=get_remote_address,
     default_limits=(
         ["200 per day", "50 per hour"]
@@ -32,6 +32,10 @@ limiter = Limiter(
         else ["1000 per day", "200 per hour"]
     ),
 )
+
+# Disable rate limiting for testing
+if os.getenv("TESTING") == "true":
+    limiter.enabled = False
 
 
 def validate_request_origin():
