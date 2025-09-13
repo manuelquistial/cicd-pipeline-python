@@ -1,6 +1,4 @@
 import os
-import threading
-import time
 
 import pytest
 from selenium import webdriver
@@ -12,33 +10,9 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000")
 
 
-@pytest.fixture(scope="session")
-def flask_app():
-    """Start Flask app in a separate thread for acceptance tests."""
-    from app.app import app
-
-    # Configure app for testing
-    app.config["TESTING"] = True
-    app.config["WTF_CSRF_ENABLED"] = False
-
-    # Start app in a separate thread
-    def run_app():
-        app.run(debug=False, port=3000, host="0.0.0.0", use_reloader=False)
-
-    thread = threading.Thread(target=run_app, daemon=True)
-    thread.start()
-
-    # Wait for app to start
-    time.sleep(2)
-
-    yield app
-
-    # Cleanup is handled by daemon thread
-
-
 # Configuración del driver (elige uno: Chrome o Firefox)
 @pytest.fixture
-def browser(flask_app):
+def browser():
     # Opción 1: Chrome (headless - sin interfaz gráfica)
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")  # Ejecuta sin interfaz gráfica
@@ -63,20 +37,39 @@ def browser(flask_app):
 # Función de ayuda para esperar y obtener el resultado
 def get_resultado(browser):
     try:
-        # Espera HASTA QUE el <h2> sea visible (máximo 10 segundos)
-        resultado = WebDriverWait(browser, 10).until(
-            EC.visibility_of_element_located((By.TAG_NAME, "h2"))
+        # Wait for either result or error to appear
+        WebDriverWait(browser, 10).until(
+            lambda driver: driver.find_elements(By.CLASS_NAME, "result")
+            or driver.find_elements(By.CLASS_NAME, "error")
+            or driver.find_elements(By.CLASS_NAME, "field-error")
         )
-        return resultado.text
+
+        # Check for result first
+        result_elements = browser.find_elements(By.CLASS_NAME, "result")
+        if result_elements:
+            return result_elements[0].text
+
+        # Check for error messages
+        error_elements = browser.find_elements(By.CLASS_NAME, "error")
+        if error_elements:
+            return error_elements[0].text
+
+        # Check for field validation errors
+        field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
+        if field_errors:
+            return field_errors[0].text
+
+        return "No se encontró resultado ni error"
     except TimeoutException:
         return "Error: Tiempo de espera agotado esperando el resultado."
 
 
 # Funcion auxiliar para encontrar elementos:
 def find_elements(browser):
-    num1_input = browser.find_element(By.NAME, "num1")
-    num2_input = browser.find_element(By.NAME, "num2")
-    operacion_select = Select(browser.find_element(By.NAME, "operacion"))
+    # The new form uses WTForms which generates different IDs
+    num1_input = browser.find_element(By.ID, "num1")
+    num2_input = browser.find_element(By.ID, "num2")
+    operacion_select = Select(browser.find_element(By.ID, "operacion"))
     calcular_button = browser.find_element(By.CSS_SELECTOR, "button[type='submit']")
     return num1_input, num2_input, operacion_select, calcular_button
 
@@ -88,30 +81,34 @@ def find_elements(browser):
         ("5", "2", "restar", "Resultado: 3"),
         ("4", "6", "multiplicar", "Resultado: 24"),
         ("10", "2", "dividir", "Resultado: 5"),
-        ("5", "0", "dividir", "Error: No se puede dividir por cero"),
-        ("abc", "def", "sumar", "Error: Introduce números válidos"),
+        ("5.0", "0.0", "dividir", "Error: No se puede dividir por cero"),
+        ("abc", "def", "sumar", "Error: Datos de entrada inválidos"),
     ],
 )
+@pytest.mark.slow
 def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
-    """
-    Test the calculator application through the web interface.
+    import time
 
-    This test assumes the Flask application is already running on the BASE_URL.
-    To run these tests, start the server first:
-        python app/app.py
-    """
+    # Add delay between tests to avoid rate limiting
+    time.sleep(2)
+
     browser.get(BASE_URL)
 
-    # Wait for page to load
-    WebDriverWait(browser, 10).until(
+    # Wait for page to load with longer timeout
+    WebDriverWait(browser, 20).until(
         EC.presence_of_element_located((By.TAG_NAME, "form"))
     )
+
+    # Additional delay to ensure page is fully loaded
+    time.sleep(2)
 
     # Encuentra los elementos de la página.  Esta vez con la funcion auxiliar.
     num1_input, num2_input, operacion_select, calcular_button = find_elements(browser)
 
     # Realiza la operacion:
+    num1_input.clear()
     num1_input.send_keys(num1)
+    num2_input.clear()
     num2_input.send_keys(num2)
     operacion_select.select_by_value(operacion)
     calcular_button.click()

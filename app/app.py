@@ -1,146 +1,75 @@
-"""
-Flask web application for a calculator.
-
-This module provides a simple web interface for performing basic arithmetic
-operations (addition, subtraction, multiplication, division) using a calculator
-module.
-"""
-
+# app/app.py
 import os
-from urllib.parse import urlparse
 
-from flask import Flask, abort, render_template, request
+from flask import Flask, jsonify, render_template, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_wtf.csrf import CSRFProtect, validate_csrf
-from wtforms import ValidationError
+from flask_wtf import FlaskForm
+from flask_wtf.csrf import CSRFProtect
+from wtforms import FloatField, SelectField, validators
 
 from .calculadora import dividir, multiplicar, restar, sumar
 
 app = Flask(__name__)
 
-# Environment-based security configuration
-
-ENVIRONMENT = os.getenv("FLASK_ENV", "development")
-IS_PRODUCTION = ENVIRONMENT == "production"
-
-# Configure secret key for CSRF protection
+# Security Configuration
 app.config["SECRET_KEY"] = os.getenv(
     "SECRET_KEY", "dev-secret-key-change-in-production"
 )
+app.config["WTF_CSRF_ENABLED"] = True
+app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
-# CSRF protection configuration
-CSRF_ENABLED = os.getenv("CSRF_PROTECTION", "true").lower() in (
-    "true",
-    "1",
-    "yes",
-    "on",
-)
-
 # Initialize rate limiter
 limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=(
-        ["200 per day", "50 per hour"]
-        if IS_PRODUCTION
-        else ["1000 per day", "200 per hour"]
-    ),
+    app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
 )
 
-# Disable rate limiting and CSRF protection for testing
-if os.getenv("TESTING") == "true":
-    limiter.enabled = False
-    # Disable CSRF protection globally for testing
-    CSRF_ENABLED = False
+
+# Input validation form
+class CalculatorForm(FlaskForm):
+    num1 = FloatField(
+        "Número 1",
+        [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
+    )
+    num2 = FloatField(
+        "Número 2",
+        [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
+    )
+    operacion = SelectField(
+        "Operación",
+        choices=[
+            ("sumar", "Sumar"),
+            ("restar", "Restar"),
+            ("multiplicar", "Multiplicar"),
+            ("dividir", "Dividir"),
+        ],
+        validators=[validators.InputRequired()],
+    )
 
 
-def validate_csrf_protection():
-    """
-    Validate CSRF protection for the request.
-    This provides protection against CSRF attacks using Flask-WTF.
-    Can be disabled via CSRF_PROTECTION environment variable.
-    """
-    # Skip CSRF validation if disabled
-    if not CSRF_ENABLED:
-        return True
-
-    # Skip CSRF validation in testing environment
-    if os.getenv("TESTING") == "true":
-        return True
-
-    try:
-        # Validate CSRF token using Flask-WTF
-        validate_csrf(request.form.get("csrf_token"))
-        return True
-    except ValidationError:
-        # CSRF validation failed
-        abort(403, description="CSRF token validation failed")
-    except Exception:
-        # For GET requests or when no CSRF token is present,
-        # fall back to origin validation
-        return validate_request_origin()
-
-
-def validate_request_origin():
-    """
-    Validate that the request comes from the same origin.
-    This provides basic protection against CSRF attacks.
-    Only enabled in production environment.
-    """
-    if not IS_PRODUCTION:
-        return True  # Skip validation in development
-
-    # Get the referer header
-    referer = request.headers.get("Referer")
-    if referer:
-        # Extract the origin from referer
-        referer_origin = urlparse(referer).netloc
-        request_origin = request.headers.get("Host")
-
-        # Allow requests from same origin
-        if referer_origin != request_origin:
-            abort(403, description="Invalid request origin")
-
-    return True
-
-
-@app.route("/", methods=["GET"])
-@limiter.limit("10 per minute")  # Additional rate limiting for calculations
+@app.route("/", methods=["GET", "POST"])
+@limiter.limit("10 per minute")  # Additional rate limiting for this endpoint
 def index():
-    """
-    Handle the main calculator page.
-
-    This function processes GET requests to display the calculator form
-    and perform calculations via query parameters.
-
-    Query Parameters:
-        num1 (float): First number for calculation
-        num2 (float): Second number for calculation
-        operacion (str): Operation to perform (sumar, restar, multiplicar,
-            dividir)
-
-    Returns:
-        str: Rendered HTML template with the calculator form and result.
-    """
-    # Validate CSRF protection
-    validate_csrf_protection()
-
+    form = CalculatorForm()
     resultado = None
+    error = None
 
-    # Check if calculation parameters are provided
-    if (
-        request.args.get("num1")
-        and request.args.get("num2")
-        and request.args.get("operacion")
-    ):
+    if request.method == "POST" and form.validate():
         try:
-            num1 = float(request.args.get("num1"))
-            num2 = float(request.args.get("num2"))
-            operacion = request.args.get("operacion")
+            num1 = form.num1.data
+            num2 = form.num2.data
+            operacion = form.operacion.data
+
+            # Additional security checks
+            if not isinstance(num1, (int, float)) or not isinstance(num2, (int, float)):
+                raise ValueError("Invalid number format")
+
+            # Check for extremely large numbers that could cause issues
+            if abs(num1) > 1e10 or abs(num2) > 1e10:
+                raise ValueError("Numbers too large")
 
             if operacion == "sumar":
                 resultado = sumar(num1, num2)
@@ -152,13 +81,62 @@ def index():
                 resultado = dividir(num1, num2)
             else:
                 resultado = "Operación no válida"
+
         except ValueError:
-            resultado = "Error: Introduce números válidos"
+            error = "Error: Introduce números válidos"
         except ZeroDivisionError:
-            resultado = "Error: No se puede dividir por cero"
+            error = "Error: No se puede dividir por cero"
+        except Exception as e:
+            error = "Error interno del servidor"
+            app.logger.error(f"Unexpected error in calculator: {e}")
+    elif request.method == "POST":
+        # Form validation failed
+        error = "Error: Datos de entrada inválidos"
 
-    return render_template("index.html", resultado=resultado)
+    return render_template("index.html", form=form, resultado=resultado, error=error)
 
 
-if __name__ == "__main__":
-    app.run(debug=False, port=3000, host="0.0.0.0")
+# Security headers
+@app.after_request
+def set_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers[
+        "Strict-Transport-Security"
+    ] = "max-age=31536000; includeSubDomains"
+    response.headers[
+        "Content-Security-Policy"
+    ] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+# Error handlers
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Handle rate limit exceeded"""
+    return jsonify(error="Rate limit exceeded. Please try again later."), 429
+
+
+@app.errorhandler(400)
+def bad_request_handler(e):
+    """Handle bad requests"""
+    return jsonify(error="Bad request"), 400
+
+
+@app.errorhandler(500)
+def internal_error_handler(e):
+    """Handle internal server errors"""
+    app.logger.error(f"Internal server error: {e}")
+    return jsonify(error="Internal server error"), 500
+
+
+# Request size limit
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max request size
+
+if __name__ == "__main__":  # pragma: no cover
+    # Production settings
+    debug_mode = os.getenv("FLASK_DEBUG", "False").lower() == "true"
+    app.run(debug=debug_mode, port=3000, host="0.0.0.0")
