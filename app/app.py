@@ -1,4 +1,3 @@
-# app/app.py
 from flask import Flask, render_template, request
 from .calculadora import sumar, restar, multiplicar, dividir
 
@@ -30,5 +29,5 @@ def index():
 
     return render_template("index.html", resultado=resultado)
 
-if __name__ == "__main__":  # pragma: no cover
-    app.run(debug=True, port=3000, host='0.0.0.0') # Quita debug=True para producción
+if __name__ == "__main__": 
+    app.run(debug=True, port=3000, host='0.0.0.0') 
