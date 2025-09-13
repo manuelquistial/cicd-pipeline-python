@@ -15,15 +15,21 @@ app = Flask(__name__)
 
 # Environment-based security configuration
 import os
-ENVIRONMENT = os.getenv('FLASK_ENV', 'development')
-IS_PRODUCTION = ENVIRONMENT == 'production'
+
+ENVIRONMENT = os.getenv("FLASK_ENV", "development")
+IS_PRODUCTION = ENVIRONMENT == "production"
 
 # Initialize rate limiter
 limiter = Limiter(
     app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"] if IS_PRODUCTION else ["1000 per day", "200 per hour"]
+    default_limits=(
+        ["200 per day", "50 per hour"]
+        if IS_PRODUCTION
+        else ["1000 per day", "200 per hour"]
+    ),
 )
+
 
 def validate_request_origin():
     """
@@ -33,15 +39,16 @@ def validate_request_origin():
     """
     if not IS_PRODUCTION:
         return  # Skip validation in development
-    
+
     # Get the referer header
-    referer = request.headers.get('Referer')
+    referer = request.headers.get("Referer")
     if referer:
         # Extract the origin from referer
         from urllib.parse import urlparse
+
         referer_origin = urlparse(referer).netloc
-        request_origin = request.headers.get('Host')
-        
+        request_origin = request.headers.get("Host")
+
         # Allow requests from same origin
         if referer_origin != request_origin:
             abort(403, description="Invalid request origin")
@@ -58,7 +65,7 @@ def index():
 
     Query Parameters:
         num1 (float): First number for calculation
-        num2 (float): Second number for calculation  
+        num2 (float): Second number for calculation
         operacion (str): Operation to perform (sumar, restar, multiplicar, dividir)
 
     Returns:
@@ -66,11 +73,15 @@ def index():
     """
     # Validate request origin for CSRF protection
     validate_request_origin()
-    
+
     resultado = None
-    
+
     # Check if calculation parameters are provided
-    if request.args.get("num1") and request.args.get("num2") and request.args.get("operacion"):
+    if (
+        request.args.get("num1")
+        and request.args.get("num2")
+        and request.args.get("operacion")
+    ):
         try:
             num1 = float(request.args.get("num1"))
             num2 = float(request.args.get("num2"))
