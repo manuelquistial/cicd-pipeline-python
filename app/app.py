@@ -41,6 +41,9 @@ app = Flask(__name__)
 # Security Configuration
 SECRET_KEY_ENV_VAR = "SECRET_KEY"
 
+# Error Messages
+INTERNAL_ERROR_MESSAGE = "Error interno del servidor"
+
 
 def get_secret_key():
     """Get secret key from environment variable."""
@@ -140,7 +143,7 @@ def _handle_calculation_error(exception):
         return "Error: No se puede dividir por cero"
 
     app.logger.error("Unexpected error in calculator: %s", exception)
-    return "Error interno del servidor"
+    return INTERNAL_ERROR_MESSAGE
 
 
 def _process_form_submission(form):
@@ -160,11 +163,11 @@ def _process_form_submission(form):
     except (TypeError, AttributeError, OverflowError) as e:
         # Handle specific calculation errors
         app.logger.error("Calculation error in form submission: %s", e)
-        return None, "Error interno del servidor"
+        return None, INTERNAL_ERROR_MESSAGE
     except Exception as e:
         # Log truly unexpected errors but don't expose internal details
         app.logger.error("Unexpected error in form submission: %s", e)
-        return None, "Error interno del servidor"
+        return None, INTERNAL_ERROR_MESSAGE
 
 
 @app.route("/", methods=["GET"])
