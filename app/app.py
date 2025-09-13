@@ -186,14 +186,14 @@ def set_security_headers(response):
     # Content Security Policy
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; "
-        "font-src 'self'; "
-        "connect-src 'self'; "
-        "frame-ancestors 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'"
+        + "script-src 'self'; "
+        + "style-src 'self' 'unsafe-inline'; "
+        + "img-src 'self' data:; "
+        + "font-src 'self'; "
+        + "connect-src 'self'; "
+        + "frame-ancestors 'none'; "
+        + "base-uri 'self'; "
+        + "form-action 'self'"
     )
     
     # Referrer policy
