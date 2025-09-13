@@ -6,15 +6,18 @@ operations (addition, subtraction, multiplication, division) using a calculator
 module.
 """
 
-from flask import Flask, render_template, request, abort
+import os
+from urllib.parse import urlparse
+
+from flask import Flask, abort, render_template, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from .calculadora import sumar, restar, multiplicar, dividir
+
+from .calculadora import dividir, multiplicar, restar, sumar
 
 app = Flask(__name__)
 
 # Environment-based security configuration
-import os
 
 ENVIRONMENT = os.getenv("FLASK_ENV", "development")
 IS_PRODUCTION = ENVIRONMENT == "production"
@@ -44,8 +47,6 @@ def validate_request_origin():
     referer = request.headers.get("Referer")
     if referer:
         # Extract the origin from referer
-        from urllib.parse import urlparse
-
         referer_origin = urlparse(referer).netloc
         request_origin = request.headers.get("Host")
 

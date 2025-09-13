@@ -1,12 +1,14 @@
 import os
+
 import pytest
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import Select, WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select, WebDriverWait
 
 BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000")
+
 
 # Configuración del driver (elige uno: Chrome o Firefox)
 @pytest.fixture
@@ -14,8 +16,8 @@ def browser():
     # Opción 1: Chrome (headless - sin interfaz gráfica)
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")  # Ejecuta sin interfaz gráfica
-    options.add_argument("--no-sandbox") # Necesario para algunos entornos
-    options.add_argument("--disable-dev-shm-usage") # Necesario para algunos entornos
+    options.add_argument("--no-sandbox")  # Necesario para algunos entornos
+    options.add_argument("--disable-dev-shm-usage")  # Necesario para algunos entornos
     driver = webdriver.Chrome(options=options)
 
     # Opción 2: Firefox (headless)
@@ -43,7 +45,8 @@ def get_resultado(browser):
     except TimeoutException:
         return "Error: Tiempo de espera agotado esperando el resultado."
 
-#Funcion auxiliar para encontrar elementos:
+
+# Funcion auxiliar para encontrar elementos:
 def find_elements(browser):
     num1_input = browser.find_element(By.NAME, "num1")
     num2_input = browser.find_element(By.NAME, "num2")
@@ -51,15 +54,16 @@ def find_elements(browser):
     calcular_button = browser.find_element(By.CSS_SELECTOR, "button[type='submit']")
     return num1_input, num2_input, operacion_select, calcular_button
 
+
 @pytest.mark.parametrize(
     "num1, num2, operacion, resultado_esperado",
     [
         ("2", "3", "sumar", "Resultado: 5"),
         ("5", "2", "restar", "Resultado: 3"),
         ("4", "6", "multiplicar", "Resultado: 24"),
-        ("10", "2", "dividir", "Resultado: 5"), 
+        ("10", "2", "dividir", "Resultado: 5"),
         ("5", "0", "dividir", "Error: No se puede dividir por cero"),
-        ("abc", "def", "sumar", "Error: Introduce números válidos"), 
+        ("abc", "def", "sumar", "Error: Introduce números válidos"),
     ],
 )
 def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
@@ -68,11 +72,11 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     # Encuentra los elementos de la página.  Esta vez con la funcion auxiliar.
     num1_input, num2_input, operacion_select, calcular_button = find_elements(browser)
 
-    #Realiza la operacion:
+    # Realiza la operacion:
     num1_input.send_keys(num1)
     num2_input.send_keys(num2)
     operacion_select.select_by_value(operacion)
     calcular_button.click()
 
-    #Verifica con la funcion auxiliar:
+    # Verifica con la funcion auxiliar:
     assert resultado_esperado in get_resultado(browser)
