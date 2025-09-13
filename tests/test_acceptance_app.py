@@ -46,10 +46,12 @@ def get_resultado(browser):
     if result_elements:
         return result_elements[0].text
 
+    # Check for general error first (higher priority)
     error_elements = browser.find_elements(By.CLASS_NAME, "error")
     if error_elements:
         return error_elements[0].text
 
+    # Check for field validation errors
     field_errors = browser.find_elements(By.CLASS_NAME, "field-error")
     if field_errors:
         return field_errors[0].text
@@ -126,9 +128,18 @@ def test_calculadora(browser, num1, num2, operacion, resultado_esperado):
     browser.get(BASE_URL)
 
     # Wait for page to load with longer timeout
-    WebDriverWait(browser, 30).until(
-        EC.presence_of_element_located((By.TAG_NAME, "form"))
-    )
+    try:
+        WebDriverWait(browser, 30).until(
+            EC.presence_of_element_located((By.TAG_NAME, "form"))
+        )
+    except TimeoutException:
+        # If form not found, check if page loaded at all
+        if "Calculadora Segura" not in browser.page_source:
+            raise Exception("Page did not load properly")
+        # Try to find form again
+        form_elements = browser.find_elements(By.TAG_NAME, "form")
+        if not form_elements:
+            raise Exception("Form not found on page")
 
     # Additional delay to ensure page is fully loaded
     time.sleep(3)
