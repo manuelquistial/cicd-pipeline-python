@@ -39,6 +39,8 @@ load_dotenv()
 app = Flask(__name__)
 
 # Security Configuration
+
+
 def get_secret_key():
     """Get secret key from environment variable or generate a secure one."""
     secret_key = os.getenv("SECRET_KEY")
@@ -55,6 +57,7 @@ def get_secret_key():
         )
     return secret_key
 
+
 app.config["SECRET_KEY"] = get_secret_key()
 app.config["WTF_CSRF_ENABLED"] = True
 app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour
@@ -64,24 +67,28 @@ csrf = CSRFProtect(app)
 
 # Initialize rate limiter
 limiter = Limiter(
-    app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
 )
 
 
 # Input validation form
 class CalculatorForm(FlaskForm):
     """Form for calculator input validation.
-    
+
     This form handles input validation for the calculator application,
     including number validation and operation selection.
     """
     num1 = FloatField(
         "Número 1",
-        [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
+        [validators.InputRequired(),
+         validators.NumberRange(min=-1e10, max=1e10)],
     )
     num2 = FloatField(
         "Número 2",
-        [validators.InputRequired(), validators.NumberRange(min=-1e10, max=1e10)],
+        [validators.InputRequired(),
+         validators.NumberRange(min=-1e10, max=1e10)],
     )
     operacion = SelectField(
         "Operación",
@@ -99,11 +106,11 @@ class CalculatorForm(FlaskForm):
 @limiter.limit("10 per minute")  # Additional rate limiting for this endpoint
 def index():
     """Handle the main calculator page.
-    
+
     This function processes both GET and POST requests:
     - GET: Displays the calculator form
     - POST: Processes the form submission and performs calculations
-    
+
     Returns:
         str: Rendered HTML template with the calculator form and result
     """
@@ -118,7 +125,9 @@ def index():
             operacion = form.operacion.data
 
             # Additional security checks
-            if not isinstance(num1, (int, float)) or not isinstance(num2, (int, float)):
+            if not isinstance(num1, (int, float)) or not isinstance(
+                num2, (int, float)
+            ):
                 raise ValueError("Invalid number format")
 
             # Check for extremely large numbers that could cause issues
@@ -147,7 +156,9 @@ def index():
         # Form validation failed
         error = "Error: Datos de entrada inválidos"
 
-    return render_template("index.html", form=form, resultado=resultado, error=error)
+    return render_template(
+        "index.html", form=form, resultado=resultado, error=error
+    )
 
 
 # Security headers
@@ -161,7 +172,8 @@ def set_security_headers(response):
         "max-age=31536000; includeSubDomains"
     )
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+        "default-src 'self'; script-src 'self'; "
+        "style-src 'self' 'unsafe-inline';"
     )
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
